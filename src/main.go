@@ -24,6 +24,14 @@ type LoadBalancer struct {
 	server          []Server
 }
 
+func NewLoadBalancer(port string, servers []Server) *LoadBalancer {
+	return &LoadBalancer{
+		port:            port,
+		roundRobinCount: 0,
+		server:          servers,
+	}
+}
+
 func newSimpleServer(addr string) *simpleServer {
 	serverUrl, err := url.Parse(addr)
 	handleErr(err)
