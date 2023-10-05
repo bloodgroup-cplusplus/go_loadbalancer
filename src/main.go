@@ -32,6 +32,31 @@ func NewLoadBalancer(port string, servers []Server) *LoadBalancer {
 	}
 }
 
+func Address(s *simpleServer) string { return s.addr }
+
+func (s *simpleServer) IsAlive() bool { return true }
+
+func (s *simpleServer) Serve(rw http.ResponseWriter, req *http.Request) {
+	s.proxy.ServeHTTP(rw, req)
+}
+
+func (lb *LoadBalancer) getNextAvailableServer() Server {
+	server := lb.server[lb.roundRobinCount%len(lb.server)]
+	for !server.IsAlive() {
+		lb.roundRobinCount++
+		server = lb.server[lb.roundRobinCount%len(lb.server)]
+	}
+	lb.roundRobinCount++
+	return server
+
+}
+
+func (lb *LoadBalancer) serveProxy(rw http.ResponseWriter, req *http.Request) {
+	targetServer := lb.getNextAvailableServer()
+	fmt.Printf("forwarding request to address %q\n", targetServer.Address())
+	targetServer.Serve(rw, req)
+
+}
 func newSimpleServer(addr string) *simpleServer {
 	serverUrl, err := url.Parse(addr)
 	handleErr(err)
@@ -40,14 +65,6 @@ func newSimpleServer(addr string) *simpleServer {
 		addr:  addr,
 		proxy: httputil.NewSingleHostReverseProxy(serverUrl),
 	}
-}
-
-func (lb *LoadBalancer) getNextAvailableServer() Server {
-
-}
-
-func (lb *LoadBalancer) serveProxy(rw http.ResponseWriter, r *http.Request) {
-
 }
 
 func handleErr(err error) {
